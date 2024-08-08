@@ -22,6 +22,7 @@ using System.Drawing;
 using ch.cyberduck.core;
 using ch.cyberduck.core.ftp;
 using Ch.Cyberduck.Ui.Winforms.Controls;
+using java.lang;
 
 namespace Ch.Cyberduck.Ui.Controller
 {
@@ -70,7 +71,21 @@ namespace Ch.Cyberduck.Ui.Controller
         string Password { get; set; }
         bool PasswordEnabled { set; }
         string PasswordLabel { set; }
+        // adding offline token directory
+        string OfflineTokenDirectory {get; set;}
+        // string SessionTokenLabel {set;}
+        // bool SessionTokenEnabled {set;}
+        // adding offline token url
+        string OfflineTokenUrl {get; set; }
+        // added url addresses and use credentials for OIDC flow
+        string AuthorizationURL {get; set; }
+        string TokenURL {get; set; }
+        string S3EPURL {get; set; }
+        string ClientID {get; set; }
+        string ClientSecret {get; set; }
+
         event VoidHandler ToggleOptions;
+    
 
         void PopulateProtocols(List<KeyValueIconTriple<Protocol, string>> protocols);
         void PopulatePrivateKeys(List<string> keys);
@@ -100,9 +115,17 @@ namespace Ch.Cyberduck.Ui.Controller
         event VoidHandler ChangedClientCertificateEvent;
         event VoidHandler OpenUrl;
         event VoidHandler OpenWebUrl;
+        // added open url for offline token
+        event VoidHandler OpenOfflineTokenUrl;
+        // end
         event VoidHandler OpenPrivateKeyBrowserEvent;
         event VoidHandler OpenDownloadFolderBrowserEvent;
+        // added open download file 
+        event VoidHandler OpenDownloadFileBrowserEvent;
         event VoidHandler OpenDownloadFolderEvent;
+        // added Changed OIDCConfig Event
+        event VoidHandler ChangedOIDCConfigEvent;
+        event VoidHandler ChangedS3EPConfigEvent;
 
         event EventHandler<PrivateKeyArgs> ChangedPrivateKeyEvent;
 
