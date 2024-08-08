@@ -25,12 +25,14 @@ using ch.cyberduck.core.ftp;
 using Ch.Cyberduck.Ui.Controller;
 using Ch.Cyberduck.Ui.Winforms.Controls;
 using static Ch.Cyberduck.ImageHelper;
+using org.apache.logging.log4j;
 
 namespace Ch.Cyberduck.Ui.Winforms
 {
     public partial class BookmarkForm : BaseForm, IBookmarkView
     {
         private bool _expanded = true;
+        private static readonly Logger log = LogManager.getLogger(typeof(BookmarkForm));
 
         public BookmarkForm()
         {
@@ -38,7 +40,7 @@ namespace Ch.Cyberduck.Ui.Winforms
 
             alertIcon.Image = Images.TryGet(_ => _.Alert);
             buttonWebURL.Image = Images.TryGet(_ => _.Site);
-
+            
             //focus nickname
             Load += (sender, args) => textBoxNickname.Focus();
 
@@ -107,6 +109,7 @@ namespace Ch.Cyberduck.Ui.Winforms
             protocol.DisplayMember = "Value";
             protocol.IconMember = "IconKey";
         }
+
 
         public void PopulatePrivateKeys(List<string> keys)
         {
@@ -179,6 +182,8 @@ namespace Ch.Cyberduck.Ui.Winforms
             set { buttonWebURL.Image = value; }
         }
 
+
+
         public event VoidHandler ChangedProtocolEvent = delegate { };
         public event VoidHandler ChangedPortEvent = delegate { };
         public event VoidHandler ChangedEncodingEvent = delegate { };
@@ -201,6 +206,13 @@ namespace Ch.Cyberduck.Ui.Winforms
         public event VoidHandler LaunchNetworkAssistantEvent = delegate { };
         public event VoidHandler ChangedPasswordEvent = delegate { };
         public event VoidHandler OpenUrl = delegate { };
+        // // added open offline token url
+        public event VoidHandler OpenOfflineTokenUrl = delegate {};
+        // added Changed OIDCConfig Event
+        public event VoidHandler ChangedOIDCConfigEvent = delegate {};
+        // added changed s3 end point event
+        public event VoidHandler ChangedS3EPConfigEvent = delegate {};
+        public event  VoidHandler OpenDownloadFileBrowserEvent = delegate { };
         public event EventHandler<PrivateKeyArgs> ChangedPrivateKeyEvent = delegate { };
 
         public bool PortFieldEnabled
@@ -314,6 +326,12 @@ namespace Ch.Cyberduck.Ui.Winforms
             get { return linkLabelURL.Text; }
         }
 
+        // added new offline token URL
+        // public string OfflineTokenURL {
+        //     set {linkOfflineToken.Text = value;}
+        //     get {return linkOfflineToken.Text;}
+        // }
+
         public string Hostname
         {
             get { return textBoxServer.Text; }
@@ -337,10 +355,39 @@ namespace Ch.Cyberduck.Ui.Winforms
             set { textBoxUsername.Enabled = value; }
         }
 
+        // adding session token
+        public string SessionToken
+        {
+            get {return textBoxSessionToken.Text.Trim();}
+            set {textBoxSessionToken.Text = value;}
+        }
+
+        public string SessionTokenLabel
+        {
+            set {labelSessionToken.Text = value;}
+        }
+
+        public bool SessionTokenEnabled
+        {
+            set {textBoxSessionToken.Enabled = value;}
+        }
+
         public string Path
         {
             get { return textBoxPath.Text; }
             set { textBoxPath.Text = value; }
+        }
+        // added offline token directory
+        public string OfflineTokenDirectory
+        {
+            get { return textBoxOfflineTokenPath.Text; }
+            set { textBoxOfflineTokenPath.Text = value; }
+        }
+        //added offline token url address
+        public string OfflineTokenUrl 
+        {
+            get {return textBoxOfflineTokenUrl.Text;}
+            set { textBoxOfflineTokenUrl.Text = value;}
         }
 
         public bool PathEnabled
@@ -401,6 +448,44 @@ namespace Ch.Cyberduck.Ui.Winforms
             set { Text = value; }
         }
 
+        // added authorization URL
+        public string AuthorizationURL
+        {
+            get { return textBoxAuthURL.Text; }
+            set { textBoxAuthURL.Text = value; }
+        }
+
+        // added token URL
+        public string TokenURL
+        {
+            get { return textBoxTokenURL.Text; }
+            set { textBoxTokenURL.Text = value; }
+        }
+
+        // added s3 endpoint
+        public string S3EPURL
+        {
+            get { return textBoxS3EPURL.Text; }
+            set { textBoxS3EPURL.Text = value; }
+        }
+
+        // added clinet ID
+        public string ClientID
+        {
+            get { return textBoxClientID.Text; }
+            set { textBoxClientID.Text = value; }
+        }
+
+        //added client secret
+        public string ClientSecret
+        {
+            get { return textBoxClientSecret.Text; }
+            set { textBoxClientSecret.Text = value; }
+        }
+
+
+    
+
         public event VoidHandler ChangedSavePasswordCheckboxEvent = delegate { };
 
         private void ConfigureToggleOptions()
@@ -457,6 +542,16 @@ namespace Ch.Cyberduck.Ui.Winforms
 
             ChangedPathEvent();
         }
+        // added OIDC event handler
+        private void textBoxOIDC_TextChanged(object sender, EventArgs e)
+        {
+            ChangedOIDCConfigEvent();
+        }
+        // added s3 end point url event handler
+        private void textBoxS3EP_TextChanged(object sender, EventArgs e)
+        {
+            ChangedS3EPConfigEvent();
+        }
 
         private void comboBoxConnectMode_SelectionChangeCommitted(object sender, EventArgs e)
         {
@@ -488,6 +583,12 @@ namespace Ch.Cyberduck.Ui.Winforms
             OpenDownloadFolderBrowserEvent();
         }
 
+        // added file brower for download offline token
+        private void downloadOfflineTokenButton_Click(object sender, EventArgs e)
+        {
+            OpenDownloadFileBrowserEvent();
+        }
+
         private void comboBoxTimezone_SelectionChangeCommitted(object sender, EventArgs e)
         {
             ChangedTimezoneEvent();
@@ -507,6 +608,13 @@ namespace Ch.Cyberduck.Ui.Winforms
         {
             OpenUrl();
         }
+
+        // added handler for offline token url
+        private void buttonOfflineTokenPath_Click(object sender, EventArgs e) {
+            // string enteredUrl = textBoxOfflineTokenUrl.Text;
+            OpenOfflineTokenUrl();
+        }
+
 
         private void button1_Click(object sender, EventArgs e)
         {
