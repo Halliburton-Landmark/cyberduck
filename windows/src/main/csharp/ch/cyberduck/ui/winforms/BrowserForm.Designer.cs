@@ -320,7 +320,7 @@ namespace Ch.Cyberduck.Ui.Winforms
             this.cryptomatorToolStripButton = new System.Windows.Forms.ToolStripButton();
             this.logToolStripButton = new System.Windows.Forms.ToolStripButton();
             this.disconnectStripButton = new System.Windows.Forms.ToolStripButton();
-            this.donateToolStripButton = new System.Windows.Forms.ToolStripButton();
+            // this.donateToolStripButton = new System.Windows.Forms.ToolStripButton();
             this.iconList = new System.Windows.Forms.ImageList(this.components);
             this.toolStripContainer1 = new System.Windows.Forms.ToolStripContainer();
             this.panelManager1 = new Ch.Cyberduck.Ui.Winforms.Controls.PanelManager();
@@ -2065,8 +2065,8 @@ namespace Ch.Cyberduck.Ui.Winforms
             this.transfersToolStripButton,
             this.cryptomatorToolStripButton,
             this.logToolStripButton,
-            this.disconnectStripButton,
-            this.donateToolStripButton});
+            this.disconnectStripButton});
+            // this.donateToolStripButton});
             this.toolBar.Location = new System.Drawing.Point(0, 0);
             this.toolBar.Name = "toolBar";
             this.toolBar.ShowItemToolTips = false;
@@ -2463,15 +2463,15 @@ namespace Ch.Cyberduck.Ui.Winforms
             // 
             // donateToolStripButton
             // 
-            this.donateToolStripButton.Alignment = System.Windows.Forms.ToolStripItemAlignment.Right;
-            this.donateToolStripButton.BackColor = System.Drawing.Color.Firebrick;
-            this.donateToolStripButton.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Text;
-            this.donateToolStripButton.Font = new System.Drawing.Font("Segoe UI", 11.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.donateToolStripButton.ForeColor = System.Drawing.Color.White;
-            this.donateToolStripButton.Name = "donateToolStripButton";
-            this.donateToolStripButton.Size = new System.Drawing.Size(158, 24);
-            this.donateToolStripButton.Text = "Get a registration key!";
-            this.donateToolStripButton.Click += new System.EventHandler(this.donateToolStripButton_Click);
+            // this.donateToolStripButton.Alignment = System.Windows.Forms.ToolStripItemAlignment.Right;
+            // this.donateToolStripButton.BackColor = System.Drawing.Color.Firebrick;
+            // this.donateToolStripButton.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Text;
+            // this.donateToolStripButton.Font = new System.Drawing.Font("Segoe UI", 11.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            // this.donateToolStripButton.ForeColor = System.Drawing.Color.White;
+            // this.donateToolStripButton.Name = "donateToolStripButton";
+            // this.donateToolStripButton.Size = new System.Drawing.Size(158, 24);
+            // this.donateToolStripButton.Text = "Get a registration key!";
+            // this.donateToolStripButton.Click += new System.EventHandler(this.donateToolStripButton_Click);
             // 
             // iconList
             // 
