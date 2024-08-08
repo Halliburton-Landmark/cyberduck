@@ -1,5 +1,28 @@
 package ch.cyberduck.core.auth;
 
+import ch.cyberduck.core.Credentials;
+import ch.cyberduck.core.CredentialsConfigurator;
+import ch.cyberduck.core.Host;
+import ch.cyberduck.core.LoginOptions;
+import ch.cyberduck.core.TemporaryAccessTokens;
+import ch.cyberduck.core.exception.LoginCanceledException;
+import com.amazonaws.SdkClientException;
+import com.amazonaws.auth.AWSCredentials;
+import com.amazonaws.auth.AWSCredentialsProvider;
+import com.amazonaws.auth.AWSSessionCredentials;
+import com.amazonaws.auth.AWSSessionCredentialsProvider;
+import com.amazonaws.auth.AWSStaticCredentialsProvider;
+import com.google.api.client.auth.oauth2.AuthorizationCodeFlow;
+import com.google.api.client.auth.oauth2.AuthorizationCodeRequestUrl;
+import com.google.api.client.auth.oauth2.AuthorizationCodeTokenRequest;
+import com.google.api.client.auth.oauth2.BearerToken;
+import com.google.api.client.auth.oauth2.ClientParametersAuthentication;
+import com.google.api.client.http.GenericUrl;
+import com.google.api.client.http.javanet.NetHttpTransport;
+import com.google.api.client.json.JsonFactory;
+import com.google.api.client.json.gson.GsonFactory;
+import com.google.api.client.util.store.DataStoreFactory;
+import com.google.api.client.util.store.MemoryDataStoreFactory;
 import java.awt.BorderLayout;
 import java.awt.Desktop;
 import java.awt.Frame;
@@ -20,48 +43,19 @@ import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.util.Arrays;
 import java.util.Base64;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Scanner;
 import java.util.concurrent.Callable;
-
 import javax.swing.JButton;
 import javax.swing.JDialog;
 import javax.swing.JLabel;
 import javax.swing.JTextField;
 import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
-
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.jets3t.service.security.ProviderCredentials;
 import org.json.JSONObject;
-
-import com.amazonaws.SdkClientException;
-import com.amazonaws.auth.AWSCredentials;
-import com.amazonaws.auth.AWSCredentialsProvider;
-import com.amazonaws.auth.AWSSessionCredentials;
-import com.amazonaws.auth.AWSSessionCredentialsProvider;
-import com.amazonaws.auth.AWSStaticCredentialsProvider;
-import com.google.api.client.auth.oauth2.AuthorizationCodeFlow;
-import com.google.api.client.auth.oauth2.AuthorizationCodeRequestUrl;
-import com.google.api.client.auth.oauth2.AuthorizationCodeTokenRequest;
-import com.google.api.client.auth.oauth2.BearerToken;
-import com.google.api.client.auth.oauth2.ClientParametersAuthentication;
-import com.google.api.client.http.GenericUrl;
-import com.google.api.client.http.javanet.NetHttpTransport;
-import com.google.api.client.json.JsonFactory;
-import com.google.api.client.json.gson.GsonFactory;
-import com.google.api.client.util.store.DataStoreFactory;
-import com.google.api.client.util.store.MemoryDataStoreFactory;
-
-import ch.cyberduck.core.Credentials;
-import ch.cyberduck.core.CredentialsConfigurator;
-import ch.cyberduck.core.Host;
-import ch.cyberduck.core.LoginOptions;
-import ch.cyberduck.core.TemporaryAccessTokens;
-import ch.cyberduck.core.exception.LoginCanceledException;
 
 
 
@@ -80,6 +74,10 @@ public class AWSCredentialsConfigurator implements CredentialsConfigurator {
     private static final JsonFactory JSON_FACTORY = GsonFactory.getDefaultInstance();
     private static final NetHttpTransport HTTP_TRANSPORT = new NetHttpTransport();
     private static String environmentName;
+    /*
+     * To Do
+     * currently only works for one bookmark
+     */
     private static String configFilePath = System.getenv("APPDATA") + "/oidc_config.txt";
 
   
@@ -148,19 +146,19 @@ public class AWSCredentialsConfigurator implements CredentialsConfigurator {
 
     // read offline token directory from appdata file
     public static String readOfflineTokendirectory() throws IOException {
-        String configFilePath = System.getenv("APPDATA") + "/offline_token_config.txt";
+        String configPathOfflineToken = System.getenv("APPDATA") + "/offline_token_config.txt";
         
         // check if the file exists
-        if (!Files.exists(Paths.get(configFilePath))) {
-            log.info("Configuration file does not exist: " + configFilePath);
+        if (!Files.exists(Paths.get(configPathOfflineToken))) {
+            log.info("Configuration file does not exist: " + configPathOfflineToken);
             return null;
         }
 
-        String path = new String(Files.readAllBytes(Paths.get(configFilePath))).trim();
+        String path = new String(Files.readAllBytes(Paths.get(configPathOfflineToken))).trim();
 
         // If the file is empty, path will be an empty string
         if (path.isEmpty()) {
-            log.info("Configuration file is empty: " + configFilePath);
+            log.info("Configuration file is empty: " + configPathOfflineToken);
             return null; 
         }
 
@@ -171,13 +169,28 @@ public class AWSCredentialsConfigurator implements CredentialsConfigurator {
 
     // read offline token content form csv file
     public String readTokenfromCsv(String filePath) throws IOException {
+        if (filePath == null) {
+            throw new IllegalArgumentException("File path cannot be null");
+        }
+
+        if (!Files.exists(Paths.get(filePath))) {
+            throw new IOException("File not found: " + filePath);
+        }
+
         try (BufferedReader br = new BufferedReader(new FileReader(filePath))) {
             return br.readLine().split(",")[1];
+        } catch (IOException e) {
+            throw e;
         }
     }
 
    // add deleting offline token path file
    public void deleteOfflineTokenFile(String filePath) {
+        if (filePath == null) {
+            log.warn("File path is null. No file to delete.");
+            return;
+        }
+        
         try {
             Files.deleteIfExists(Paths.get(filePath));
             log.info("offline token file deleted:" + filePath);
@@ -282,13 +295,24 @@ public class AWSCredentialsConfigurator implements CredentialsConfigurator {
 
     // added read environment name from the file
     public String readEnvirmentNamefromConfigFile(String filePath) throws IOException {
-    try (BufferedReader br = new BufferedReader(new FileReader(filePath))) {
-        String line = br.readLine();
-        if (line != null && line.contains("=")) {
-            return line.split("=")[1].trim();
+        if (filePath == null) {
+            throw new IllegalArgumentException("File path cannot be null");
         }
-    }
-    return null; 
+
+        if (!Files.exists(Paths.get(filePath))) {
+            throw new IOException("File not found: " + filePath);
+        }
+        try (BufferedReader br = new BufferedReader(new FileReader(filePath))) {
+            String line = br.readLine();
+            if (line != null && line.contains("=")) {
+                return line.split("=")[1].trim();
+            }
+        } catch (IOException e) {
+            log.error("Error reading config file: " + filePath, e);
+            throw e;
+        }
+
+        return null;
     } 
 
     public Credentials getS3Token(String accessToken, String S3CredentialsURL) throws Exception {
@@ -359,7 +383,6 @@ public class AWSCredentialsConfigurator implements CredentialsConfigurator {
 
          // Generate the authorization URL
         AuthorizationCodeRequestUrl authorizationUrlBuilder = flow.newAuthorizationUrl();
-        String redirectUri = "urn:ietf:wg:oauth:2.0:oob";
         authorizationUrlBuilder.setRedirectUri(redirectUri);
         authorizationUrlBuilder.set("code_challenge", codeChallenge);
         authorizationUrlBuilder.set("code_challenge_method", "S256");
@@ -434,7 +457,6 @@ public class AWSCredentialsConfigurator implements CredentialsConfigurator {
         AuthorizationCodeTokenRequest tokenRequest = flow.newTokenRequest(authorizationCode);
         tokenRequest.setRedirectUri(redirectUri);
         tokenRequest.set("code_verifier", codeVerifier);
-
         return tokenRequest.execute().getAccessToken();
 
     }
@@ -459,7 +481,9 @@ public class AWSCredentialsConfigurator implements CredentialsConfigurator {
         log.info("start calling get credentials method");
         
         environmentName = readEnvirmentNamefromConfigFile(configFilePath);
-        log.info("environment name:" + environmentName);
+        if (environmentName == null || environmentName.isEmpty()) {
+            throw new IllegalArgumentException("Environment name is not specified in the configuration file.");
+        }
     
 
         boolean pkce = true;
@@ -521,8 +545,6 @@ public class AWSCredentialsConfigurator implements CredentialsConfigurator {
         Credentials s3Credentials = null;
         String offlineTokenPath = readOfflineTokendirectory();
 
-        // Map<String, String> config = readS3EPConfigureation();
-        // String s3EP = config.get("S3EPURL");
         String s3EP = "https://bhdm-server.distteam." + environmentName + ".landmarksoftware.io/BHDM/v1/FileUtilities/SasToken?SessionName=test";
 
         try {
@@ -550,11 +572,7 @@ public class AWSCredentialsConfigurator implements CredentialsConfigurator {
             host.getCredentials().setUsername(s3Credentials.getUsername());
             host.getCredentials().setPassword(s3Credentials.getPassword());
             host.getCredentials().setToken(s3Credentials.getToken());
-      
-            log.info("accessKeyId: " + host.getCredentials().getUsername());
-            log.info("secretAccessKey: " + host.getCredentials().getPassword());
-            log.info("sessionToken: " + host.getCredentials().getToken());
-            log.info("S3 credentials successfully fetched and set to Host object.");
+
 
             // write credentials to .aws/credentials file
             log.info("start to write the credentials to the .aws/credentials.");
