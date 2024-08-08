@@ -43,17 +43,26 @@ using static Ch.Cyberduck.ImageHelper;
 using Path = System.IO.Path;
 using Timer = System.Threading.Timer;
 using TimeZone = java.util.TimeZone;
+using System.Threading.Tasks;
+using System.Diagnostics;
+using System.Windows.Forms;
+using System.IO;
 
 namespace Ch.Cyberduck.Ui.Controller
 {
+    using System.Data;
     using System.Reactive.Linq;
+    using ch.cyberduck.core.s3;
+    using com.amazonaws.services.s3.model;
 
     public abstract class BookmarkController<T> : WindowController<T> where T : IBookmarkView
-    {
+    {   
+        
         public const int LargeBookmarkSize = 64;
         public const int MediumBookmarkSize = 32;
         public const int SmallBookmarkSize = 16;
         protected readonly Host _host;
+    
         protected readonly LoginOptions _options;
         protected readonly LoginInputValidator _validator;
         private const String TimezoneIdPrefixes = "^(Africa|America|Asia|Atlantic|Australia|Europe|Indian|Pacific)/.*";
@@ -66,6 +75,7 @@ namespace Ch.Cyberduck.Ui.Controller
         private readonly Timer _ticklerFavicon;
         private readonly Timer _ticklerReachability;
         private readonly IDisposable profileObserver;
+       
 
         protected BookmarkController(Host host) : this(host,
             new LoginOptions(host.getProtocol()))
@@ -133,6 +143,10 @@ namespace Ch.Cyberduck.Ui.Controller
             View.OpenDownloadFolderEvent += View_OpenDownloadFolderEvent;
             View.OpenUrl += View_OpenUrl;
             View.OpenWebUrl += View_OpenWebUrl;
+            View.OpenOfflineTokenUrl += View_OpenOfflineTokenUrl;
+            View.OpenDownloadFileBrowserEvent += View_OpenDownloadFileBrowserEvent;
+            View.ChangedOIDCConfigEvent += View_ChangedOIDCConfigEvent;
+           
 
             ProfileListObserver observer = Locator.Current.GetService<ProfileListObserver>();
             profileObserver = Observable.FromEventPattern<EventHandler, EventArgs>(
@@ -144,6 +158,7 @@ namespace Ch.Cyberduck.Ui.Controller
                     Update();
                 });
         }
+
 
         protected virtual String ToggleProperty => "bookmark.toggle.options";
 
@@ -168,6 +183,8 @@ namespace Ch.Cyberduck.Ui.Controller
                 }
             }
         }
+
+
 
         internal void View_ChangedPathEvent()
         {
@@ -250,11 +267,14 @@ namespace Ch.Cyberduck.Ui.Controller
             View.HostFieldEnabled = _host.getProtocol().isHostnameConfigurable();
             View.Nickname = BookmarkNameProvider.toString(_host);
             View.DownloadFolder = new DownloadDirectoryFinder().find(_host).getAbsolute();
-            View.URL = new HostUrlProvider(true, true).get(_host);
+            // View.URL = new HostUrlProvider(true, true).get(_host);
+            View.URL = _host.getProtocol().getIdentifier().Equals("s3") ? "https://s3.amazonaws.com" : new HostUrlProvider(true, true).get(_host);
             View.Port = _host.getPort().ToString();
             View.PortFieldEnabled = _host.getProtocol().isPortConfigurable();
             View.PathFieldEnabled = _host.getProtocol().isPathConfigurable();
             View.Path = _host.getDefaultPath();
+
+            bool isS3Protocol = _host.getProtocol().getIdentifier().Equals("s3");
             View.Username = _host.getCredentials().getUsername();
             View.UsernameEnabled = _options.user() && !_host.getCredentials().isAnonymousLogin();
             View.UsernameLabel = $"{_host.getProtocol().getUsernamePlaceholder()}:";
@@ -270,6 +290,7 @@ namespace Ch.Cyberduck.Ui.Controller
             View.ConnectModeFieldEnabled = _host.getProtocol().getType() == Protocol.Type.ftp;
             View.SelectedConnectMode = _host.getFTPConnectMode();
             View.PrivateKeyFieldEnabled = _options.publickey();
+       
 
             if (_host.getCredentials().isPublicKeyAuthentication())
             {
@@ -393,41 +414,47 @@ namespace Ch.Cyberduck.Ui.Controller
         {
             List<KeyValueIconTriple<Protocol, string>> protocols = new List<KeyValueIconTriple<Protocol, string>>();
             ProtocolFactory p = ProtocolFactory.get();
-            foreach (Protocol protocol in p.find(new DefaultProtocolPredicate(
-                EnumSet.of(Protocol.Type.ftp, Protocol.Type.sftp, Protocol.Type.dav, Protocol.Type.smb))).toArray(new Protocol[] { }))
+            // foreach (Protocol protocol in p.find(new DefaultProtocolPredicate(
+            //     EnumSet.of(Protocol.Type.ftp, Protocol.Type.sftp, Protocol.Type.dav, Protocol.Type.smb))).toArray(new Protocol[] { }))
+            // {
+            //     protocols.Add(new KeyValueIconTriple<Protocol, string>(protocol, protocol.getDescription(),
+            //         protocol.disk()));
+            // }
+
+            // foreach (Protocol protocol in p.find(new DefaultProtocolPredicate(
+            //     EnumSet.of(Protocol.Type.s3, Protocol.Type.swift, Protocol.Type.azure, Protocol.Type.b2,
+            //         Protocol.Type.googlestorage))).toArray(new Protocol[] { }))
+            // {
+            //     protocols.Add(new KeyValueIconTriple<Protocol, string>(protocol, protocol.getDescription(),
+            //         protocol.disk()));
+            // }
+
+            // foreach (Protocol protocol in p.find(new DefaultProtocolPredicate(
+            //         EnumSet.of(Protocol.Type.dropbox, Protocol.Type.box, Protocol.Type.onedrive, Protocol.Type.googledrive, Protocol.Type.nextcloud, Protocol.Type.owncloud, Protocol.Type.dracoon, Protocol.Type.brick)))
+            //     .toArray(new Protocol[] { }))
+            // {
+            //     protocols.Add(new KeyValueIconTriple<Protocol, string>(protocol, protocol.getDescription(),
+            //         protocol.disk()));
+            // }
+
+            // foreach (Protocol protocol in p.find(new DefaultProtocolPredicate(
+            //     EnumSet.of(Protocol.Type.file))).toArray(new Protocol[] { }))
+            // {
+            //     protocols.Add(new KeyValueIconTriple<Protocol, string>(protocol, protocol.getDescription(),
+            //         protocol.disk()));
+            // }
+
+            // foreach (Protocol protocol in p.find(new ProfileProtocolPredicate()).toArray(new Protocol[] { }))
+            // {
+            //     protocols.Add(new KeyValueIconTriple<Protocol, string>(protocol, protocol.getDescription(),
+            //         protocol.disk()));
+            // }
+            // Fetch only the S3 protocol
+            foreach (Protocol protocol in p.find(new DefaultProtocolPredicate(EnumSet.of(Protocol.Type.s3))).toArray(new Protocol[] { }))
             {
-                protocols.Add(new KeyValueIconTriple<Protocol, string>(protocol, protocol.getDescription(),
-                    protocol.disk()));
+                protocols.Add(new KeyValueIconTriple<Protocol, string>(protocol, protocol.getDescription(), protocol.disk()));
             }
 
-            foreach (Protocol protocol in p.find(new DefaultProtocolPredicate(
-                EnumSet.of(Protocol.Type.s3, Protocol.Type.swift, Protocol.Type.azure, Protocol.Type.b2,
-                    Protocol.Type.googlestorage))).toArray(new Protocol[] { }))
-            {
-                protocols.Add(new KeyValueIconTriple<Protocol, string>(protocol, protocol.getDescription(),
-                    protocol.disk()));
-            }
-
-            foreach (Protocol protocol in p.find(new DefaultProtocolPredicate(
-                    EnumSet.of(Protocol.Type.dropbox, Protocol.Type.box, Protocol.Type.onedrive, Protocol.Type.googledrive, Protocol.Type.nextcloud, Protocol.Type.owncloud, Protocol.Type.dracoon, Protocol.Type.brick)))
-                .toArray(new Protocol[] { }))
-            {
-                protocols.Add(new KeyValueIconTriple<Protocol, string>(protocol, protocol.getDescription(),
-                    protocol.disk()));
-            }
-
-            foreach (Protocol protocol in p.find(new DefaultProtocolPredicate(
-                EnumSet.of(Protocol.Type.file))).toArray(new Protocol[] { }))
-            {
-                protocols.Add(new KeyValueIconTriple<Protocol, string>(protocol, protocol.getDescription(),
-                    protocol.disk()));
-            }
-
-            foreach (Protocol protocol in p.find(new ProfileProtocolPredicate()).toArray(new Protocol[] { }))
-            {
-                protocols.Add(new KeyValueIconTriple<Protocol, string>(protocol, protocol.getDescription(),
-                    protocol.disk()));
-            }
             protocols.Add(new KeyValueIconTriple<Protocol, string>(null,
                 LocaleFactory.localizedString("More Options", "Bookmark") + '\u2026', null));
 
@@ -585,7 +612,7 @@ namespace Ch.Cyberduck.Ui.Controller
             ItemChanged();
         }
 
-        private void View_ChangedProtocolEvent()
+        private async void View_ChangedProtocolEvent()
         {
             Protocol selected = View.SelectedProtocol;
             if (selected == null)
@@ -635,6 +662,8 @@ namespace Ch.Cyberduck.Ui.Controller
                 _validator.configure(selected);
                 ItemChanged();
                 Reachable();
+
+            
             }
             Update();
         }
@@ -675,6 +704,129 @@ namespace Ch.Cyberduck.Ui.Controller
             View.ShowDownloadFolderBrowser(folder.getAbsolute());
         }
 
+        // added open download file browser
+        private void View_OpenDownloadFileBrowserEvent()
+        {
+           
+            using (OpenFileDialog openFileDialog = new OpenFileDialog())
+            {
+                openFileDialog.Title = "Select a File";
+                openFileDialog.Filter = "All files (*.*)|*.*";
+                openFileDialog.InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+
+                if (openFileDialog.ShowDialog() == DialogResult.OK)
+                {
+                    string selectedPath = openFileDialog.FileName;
+                    View.OfflineTokenDirectory = selectedPath;
+                    // write the directory to a configuration file 
+                    WriteOfflineTokenDirectoryToConfig(selectedPath);
+                }
+                else {
+                    ClearOfflineTokenDirectoryConfig();
+                }
+            }
+        }
+
+        // added write offline token directory to configuration file
+        private void WriteOfflineTokenDirectoryToConfig(string directoryPath) 
+        {
+            string configFilePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "offline_token_config.txt");
+            File.WriteAllText(configFilePath, directoryPath);
+            Console.WriteLine("Offline token directory written to config file: " + configFilePath);
+            Log.info("Offline token directory written to config file:" + configFilePath);
+        }
+
+        // added clear offline token directory
+        private void ClearOfflineTokenDirectoryConfig()
+        {
+            string configFilePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "offline_token_config.txt");
+
+            try
+            {
+                if (File.Exists(configFilePath))
+                {
+                    File.WriteAllText(configFilePath, string.Empty);
+                    Log.info("Offline token directory config cleared: " + configFilePath);
+                }
+                else
+                {
+                    Log.info("Config file does not exist: " + configFilePath);
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Error clearing offline token directory config file: " + ex.Message);
+                Log.error("Error clearing offline token directory config file: " + ex.Message);
+            }
+        }
+
+    // added event for OIDC configure
+    private void View_ChangedOIDCConfigEvent()
+    {
+        if (string.IsNullOrEmpty(View.AuthorizationURL))
+            
+        {
+            // Optionally handle the case where not all fields are filled
+            return;
+        }
+
+        // Write the configuration to a file
+        WriteOIDCConfigurationToFile();
+    }
+
+    // added evnet for s3 end point server config
+    private void View_ChangedS3EPConfigEvent()
+    {
+        if (string.IsNullOrEmpty(View.S3EPURL))
+        {
+            return;
+        }
+
+        WriteS3EPConfigurationToFile();
+    }
+    
+    // added method to write configure file to store OIDC flow required inputs
+    private void WriteOIDCConfigurationToFile()
+    {
+        string configFilePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "OIDC_config.txt");
+        try
+        {
+            using (StreamWriter writer = new StreamWriter(configFilePath))
+            {
+                writer.WriteLine("EnvironmentName=" + View.AuthorizationURL);
+           
+            }
+
+            Log.info("OIDC configuration written to config file: " + configFilePath);
+        }
+        catch (Exception ex)
+        {
+            Log.error("Error writing OIDC configuration to file: " + ex.Message);
+        }
+
+    }
+
+    // added method to write s3 end point to configure file
+    private void WriteS3EPConfigurationToFile()
+    {
+        string s3epConfigFilePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "S3EP_config.txt");
+
+        try
+        {
+            using (StreamWriter writer = new StreamWriter(s3epConfigFilePath))
+            {
+                writer.WriteLine("S3EPURL=" + View.S3EPURL);
+            }
+
+            Log.info("S3EP configuration written to config file: " + s3epConfigFilePath);
+        }
+        catch (Exception ex)
+        {
+            Log.error("Error writing S3EP configuration to file: " + ex.Message);
+        }
+    }
+
+
         private void View_OpenDownloadFolderEvent()
         {
             Local folder = new DownloadDirectoryFinder().find(_host);
@@ -700,6 +852,16 @@ namespace Ch.Cyberduck.Ui.Controller
         private void View_OpenWebUrl()
         {
             BrowserLauncherFactory.get().open(new DefaultWebUrlProvider().toUrl(_host).getUrl());
+        }
+
+        // added open offlinetoken url
+        private void View_OpenOfflineTokenUrl() 
+        {
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = View.OfflineTokenUrl,
+                UseShellExecute = true
+            });
         }
 
         private void View_ToggleOptions()
