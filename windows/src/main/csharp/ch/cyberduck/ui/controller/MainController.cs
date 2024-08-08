@@ -25,7 +25,6 @@ using ch.cyberduck.core.box;
 using ch.cyberduck.core.brick;
 using ch.cyberduck.core.ctera;
 using ch.cyberduck.core.dav;
-using ch.cyberduck.core.deepbox;
 using ch.cyberduck.core.dropbox;
 using ch.cyberduck.core.eue;
 using ch.cyberduck.core.exception;
@@ -110,6 +109,14 @@ namespace Ch.Cyberduck.Ui.Controller
         private readonly SynchronizationContext mainThreadSync;
         private readonly GeneratedApplication wpfHelper;
 
+        /// <summary>
+        /// Saved browsers
+        /// </summary>
+        private readonly AbstractHostCollection _sessions =
+            new BookmarkCollection(
+                LocalFactory.get(SupportDirectoryFinderFactory.get().find(), "Sessions"),
+                "session");
+
         private readonly CountdownEvent transfersSemaphore = new CountdownEvent(1);
 
         /// <summary>
@@ -151,11 +158,10 @@ namespace Ch.Cyberduck.Ui.Controller
             }
 
             protocolFactory.register(new FTPProtocol(), new FTPTLSProtocol(), new SFTPProtocol(), new DAVProtocol(), new SMBProtocol(),
-                new DAVSSLProtocol(), new SwiftProtocol(), new S3Protocol(), new GoogleStorageProtocol(),
+                new DAVSSLProtocol(), new SwiftProtocol(), new S3Protocol(), new GoogleStorageProtocol(), 
                 new AzureProtocol(), new IRODSProtocol(), new SpectraProtocol(), new B2Protocol(), new DriveProtocol(),
                 new DropboxProtocol(), new HubicProtocol(), new LocalProtocol(), new OneDriveProtocol(), new SharepointProtocol(), new SharepointSiteProtocol(),
-                new MantaProtocol(), new SDSProtocol(), new StoregateProtocol(), new BrickProtocol(), new NextcloudProtocol(), new OwncloudProtocol(), new CteraProtocol(), new BoxProtocol(), new EueProtocol(),
-                new DeepboxProtocol());
+                new MantaProtocol(), new SDSProtocol(), new StoregateProtocol(), new BrickProtocol(), new NextcloudProtocol(), new OwncloudProtocol(), new CteraProtocol(), new BoxProtocol(), new EueProtocol());
             protocolFactory.load();
             
             SynchronizationContext.SetSynchronizationContext(new WindowsFormsSynchronizationContext());
@@ -199,7 +205,6 @@ namespace Ch.Cyberduck.Ui.Controller
                 return false;
             }
 
-            AbstractHostCollection sessions = SessionsCollection.defaultCollection();
             // Determine if there are any open connections
             foreach (BrowserController controller in new List<BrowserController>(Browsers))
             {
@@ -212,7 +217,7 @@ namespace Ch.Cyberduck.Ui.Controller
                             new HostDictionary().deserialize(
                                 controller.Session.getHost().serialize(SerializerFactory.get()));
                         serialized.setWorkdir(controller.Workdir);
-                        sessions.add(serialized);
+                        Application._sessions.add(serialized);
                     }
                 }
             }
@@ -225,25 +230,25 @@ namespace Ch.Cyberduck.Ui.Controller
             License l = LicenseFactory.find();
             if (!l.verify(new DisabledLicenseVerifierCallback()))
             {
-                string appVersion = Assembly.GetExecutingAssembly().GetName().Version.ToString();
-                String lastversion = PreferencesFactory.get().getProperty("donate.reminder");
-                if (appVersion.Equals(lastversion))
-                {
-                    // Do not display if same version is installed
-                    return true;
-                }
+                // string appVersion = Assembly.GetExecutingAssembly().GetName().Version.ToString();
+                // String lastversion = PreferencesFactory.get().getProperty("donate.reminder");
+                // if (appVersion.Equals(lastversion))
+                // {
+                //     // Do not display if same version is installed
+                //     return true;
+                // }
 
-                DateTime nextReminder = new DateTime(PreferencesFactory.get().getLong("donate.reminder.date"));
-                // Display prompt every n days
-                nextReminder.AddDays(PreferencesFactory.get().getLong("donate.reminder.interval"));
-                Logger.debug("Next reminder: " + nextReminder);
-                // Display after upgrade
-                if (nextReminder.CompareTo(DateTime.Now) == 1)
-                {
-                    // Do not display if shown in the reminder interval
-                    return true;
-                }
-                ObjectFactory.GetInstance<IDonationController>().Show();
+                // DateTime nextReminder = new DateTime(PreferencesFactory.get().getLong("donate.reminder.date"));
+                // // Display prompt every n days
+                // nextReminder.AddDays(PreferencesFactory.get().getLong("donate.reminder.interval"));
+                // Logger.debug("Next reminder: " + nextReminder);
+                // // Display after upgrade
+                // if (nextReminder.CompareTo(DateTime.Now) == 1)
+                // {
+                //     // Do not display if shown in the reminder interval
+                //     return true;
+                // }
+                // ObjectFactory.GetInstance<IDonationController>().Show();
             }
             return true;
         }
@@ -346,7 +351,7 @@ namespace Ch.Cyberduck.Ui.Controller
                                 {
                                     case -1: // Cancel
                                              // Quit has been interrupted. Delete any saved sessions so far.
-                                        SessionsCollection.defaultCollection().clear();
+                                        Application._sessions.clear();
                                         readyToExit = false;
                                         break;
 
@@ -816,15 +821,14 @@ namespace Ch.Cyberduck.Ui.Controller
                 HistoryCollection.defaultCollection().load();
                 if (PreferencesFactory.get().getBoolean("browser.serialize"))
                 {
-                    SessionsCollection.defaultCollection().load();
+                    _sessions.load();
                 }
                 AbstractHostCollection c = BookmarkCollection.defaultCollection();
                 c.load();
                 bookmarksSemaphore.Signal();
             }, () =>
             {
-                AbstractHostCollection sessions = SessionsCollection.defaultCollection();
-                foreach (Host host in sessions)
+                foreach (Host host in _sessions)
                 {
                     Host h = host;
                     _bc.Invoke(delegate
@@ -834,7 +838,7 @@ namespace Ch.Cyberduck.Ui.Controller
                     });
                 }
 
-                if (sessions.isEmpty())
+                if (_sessions.isEmpty())
                 {
                     if (PreferencesFactory.get().getBoolean("browser.open.untitled"))
                     {
@@ -848,7 +852,7 @@ namespace Ch.Cyberduck.Ui.Controller
                         }
                     }
                 }
-                sessions.clear();
+                _sessions.clear();
             });
             HistoryCollection.defaultCollection().addListener(this);
         }
