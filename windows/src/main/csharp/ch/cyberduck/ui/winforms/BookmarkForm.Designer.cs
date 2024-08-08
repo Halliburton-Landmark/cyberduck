@@ -221,7 +221,7 @@ namespace Ch.Cyberduck.Ui.Winforms
             this.downloadOfflineTokenButton.Text = "Choose…";
             this.downloadOfflineTokenButton.UseVisualStyleBackColor = true;
             this.downloadOfflineTokenButton.Click += new System.EventHandler(this.downloadOfflineTokenButton_Click);
-            // 
+            //
             // label1
             // 
             this.label1.Anchor = System.Windows.Forms.AnchorStyles.Right;
@@ -528,7 +528,7 @@ namespace Ch.Cyberduck.Ui.Winforms
             this.optionsPanel.RowStyles.Add(new System.Windows.Forms.RowStyle());
             this.optionsPanel.Size = new System.Drawing.Size(482, 346);// initial 286
             this.optionsPanel.TabIndex = 41;
-        
+            // 
             // 
             // labelAuthURL
             // 
