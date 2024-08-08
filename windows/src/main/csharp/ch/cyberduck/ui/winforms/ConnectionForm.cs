@@ -298,6 +298,20 @@ namespace Ch.Cyberduck.Ui.Winforms
             set { textBoxPassword.Text = value; }
         }
 
+        // added offline token directory
+        public string OfflineTokenDirectory
+        {
+            get { return string.Empty; }
+            set { }
+        }
+
+          //added offline token url address
+        public string OfflineTokenUrl 
+        {
+            get {return string.Empty;}
+            set { }
+        }
+
         public bool PasswordEnabled
         {
             set { textBoxPassword.Enabled = value; }
@@ -336,6 +350,41 @@ namespace Ch.Cyberduck.Ui.Winforms
         {
             get { return anonymousCheckBox.Enabled; }
             set { anonymousCheckBox.Enabled = value; }
+        }
+
+        // added authorization URL
+        public string AuthorizationURL
+        {
+            get { return string.Empty; }
+            set { }
+        }
+
+        // added token URL
+        public string TokenURL
+        {
+            get { return string.Empty; }
+            set { }
+        }
+
+        // added s3 endpoint
+        public string S3EPURL
+        {
+            get { return string.Empty; }
+            set { }
+        }
+
+        // added clinet ID
+        public string ClientID
+        {
+            get { return string.Empty; }
+            set { }
+        }
+
+        //added client secret
+        public string ClientSecret
+        {
+            get { return string.Empty; }
+            set { }
         }
 
         public void PopulateProtocols(List<KeyValueIconTriple<Protocol, string>> protocols)
@@ -422,6 +471,11 @@ namespace Ch.Cyberduck.Ui.Winforms
         public event EventHandler<PrivateKeyArgs> ChangedPrivateKeyEvent = delegate { };
         public event VoidHandler ChangedPublicKeyCheckboxEvent = delegate { };
 
+        public event VoidHandler OpenOfflineTokenUrl = delegate {};
+
+        public event VoidHandler OpenDownloadFileBrowserEvent = delegate { };
+        public event VoidHandler ChangedOIDCConfigEvent = delegate { };
+        public event VoidHandler ChangedS3EPConfigEvent = delegate { };
         private void ConfigureToggleOptions()
         {
             toggleOptionsLabel.Click += (sender, args) => ToggleOptions();
